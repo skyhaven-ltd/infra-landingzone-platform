@@ -16,7 +16,7 @@ set -euo pipefail
 ###############################################################################
 
 TENANT_ID="bcfa57b3-7ca9-479a-bd62-2d2894d69ee4"
-GITHUB_OWNER="liam-goodchild"
+GITHUB_OWNER="skyhaven-ltd"
 ROLE="Owner" # Owner required for Terraform to manage role assignments
 
 declare -A SUBSCRIPTION_IDS=(
@@ -36,8 +36,8 @@ declare -A ROLE_ASSIGNMENT_SCOPES=(
 # Format: "repo:environment" pairs. Each pair gets its own federated credential.
 declare -A GITHUB_REPOS=(
 	["platform"]="infra-landingzone-platform:prd"
-	["personal"]="solution-certwatch-web:dev solution-certwatch-web:prd solution-cvengine-portfolio:dev solution-cvengine-portfolio:prd solution-powertoggle-vm:dev solution-powertoggle-vm:prd"
-	["customer"]="solution-braveart-gallery:dev solution-braveart-gallery:prd"
+	["personal"]="app-certwatch-web:dev app-certwatch-web:prd app-cvengine-portfolio:dev app-cvengine-portfolio:prd app-powertoggle-vm:dev app-powertoggle-vm:prd"
+	["customer"]="app-braveart-gallery:dev app-braveart-gallery:prd"
 )
 
 SCOPES=("platform" "personal" "customer")
