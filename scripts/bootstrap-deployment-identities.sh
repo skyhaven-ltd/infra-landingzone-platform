@@ -36,7 +36,7 @@ declare -A ROLE_ASSIGNMENT_SCOPES=(
 # Format: "repo:environment" pairs. Each pair gets its own federated credential.
 declare -A GITHUB_REPOS=(
 	["platform"]="infra-landingzone-platform:prd"
-	["personal"]="app-certwatch-web:dev app-certwatch-web:prd app-cvengine-portfolio:dev app-cvengine-portfolio:prd app-powertoggle-vm:dev app-powertoggle-vm:prd"
+	["personal"]="app-certwatch-web:dev app-certwatch-web:prd app-cvengine-portfolio:dev app-cvengine-portfolio:prd app-powertoggle-vm:dev app-powertoggle-vm:prd infra-engineering-template:dev infra-engineering-template:prd"
 	["customer"]="app-braveart-gallery:dev app-braveart-gallery:prd"
 )
 
