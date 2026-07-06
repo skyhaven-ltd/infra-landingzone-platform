@@ -35,15 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.env || 'prd' }}
     env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_USE_OIDC: "true"
       TF_ENV: ${{ inputs.env || 'prd' }}
-      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      TF_VAR_cloudflare_account_id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TF_VAR_porkbun_api_key: ${{ secrets.PORKBUN_API_KEY }}
-      TF_VAR_porkbun_secret_api_key: ${{ secrets.PORKBUN_SECRET_API_KEY }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -58,23 +54,34 @@ jobs:
       - name: "Azure Login"
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_PLATFORM_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_PLATFORM_SUBSCRIPTION_ID }}
+
+      - name: "Fetch Secrets From Key Vault"
+        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/keyvault-secrets@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
+        with:
+          keyvault_name: kv-platform-${{ inputs.env || 'prd' }}-uks-02
+          secrets: |
+            TF_VAR_cloudflare_api_token=cloudflare-api-token
+            TF_VAR_cloudflare_account_id=cloudflare-account-id
+            TF_VAR_porkbun_api_key=porkbun-api-key
+            TF_VAR_porkbun_secret_api_key=porkbun-secret-api-key
+          login: "false"
 
       - name: "Ensure State Container"
-        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/ensure-tfstate-container@35c3928dd1e653238dc0de99c8658c916c703a1b # v1.0.1
+        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/ensure-tfstate-container@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          storage_account_name: sttfsplatform${{ inputs.env || 'prd' }}uks01
+          storage_account_name: stplatform${{ inputs.env || 'prd' }}uks02
           container_name: ${{ github.event.repository.name }}
           login: "false"
 
       - name: "Terraform Init"
-        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/terraform-backend-init@35c3928dd1e653238dc0de99c8658c916c703a1b # v1.0.1
+        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/terraform-backend-init@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
           environment: ${{ inputs.env || 'prd' }}
           working_directory: infra
-          platform_subscription_id: ${{ secrets.AZURE_PLATFORM_SUBSCRIPTION_ID }}
+          platform_subscription_id: ${{ vars.AZURE_PLATFORM_SUBSCRIPTION_ID }}
           container_name: ${{ github.event.repository.name }}
 
       - name: "Terraform Plan"
@@ -100,8 +107,8 @@ jobs:
 
       - name: "Break State Lease"
         if: always()
-        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/break-tfstate-lease@35c3928dd1e653238dc0de99c8658c916c703a1b # v1.0.1
+        uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/break-tfstate-lease@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          storage_account_name: sttfsplatform${{ inputs.env || 'prd' }}uks01
+          storage_account_name: stplatform${{ inputs.env || 'prd' }}uks02
           container_name: ${{ github.event.repository.name }}
           login: "false"
