@@ -18,4 +18,5 @@ jobs:
     uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-terraform.yml@patch/infracost-cost-only # TEMP: test cost-only Infracost action
     with:
       environments: '["prd"]'
+      enable_infracost: false
     secrets: inherit
