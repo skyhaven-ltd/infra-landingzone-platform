@@ -1,0 +1,16 @@
+name: Lint
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  Lint:
+    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-lint.yml@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
+    with:
+      flavor: terraform
+      config_file: .github/validation/.mega-linter.yml

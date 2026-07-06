@@ -1,0 +1,26 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  Validate:
+    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-terraform.yml@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
+    with:
+      environments: '["prd"]'
+      enable_infracost: false
+      tf_var_secrets: |
+        TF_VAR_cloudflare_api_token=cloudflare-api-token
+        TF_VAR_cloudflare_account_id=cloudflare-account-id
+        TF_VAR_porkbun_api_key=porkbun-api-key
+        TF_VAR_porkbun_secret_api_key=porkbun-secret-api-key

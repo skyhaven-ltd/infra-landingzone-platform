@@ -10,64 +10,7 @@ on:
 permissions: {}
 
 jobs:
-  tag:
-    name: Create Version Tag
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
+  Tag:
     permissions:
       contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4 # zizmor: ignore[artipacked]
-        with:
-          fetch-depth: 0
-
-      - name: Get merged branch name
-        id: branch
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-        run: echo "name=$HEAD_REF" >> "$GITHUB_OUTPUT"
-
-      - name: Determine bump type
-        id: bump
-        env:
-          BRANCH: ${{ steps.branch.outputs.name }}
-        run: |
-          if [[ "$BRANCH" == major/* ]]; then
-            echo "type=major" >> "$GITHUB_OUTPUT"
-          elif [[ "$BRANCH" == minor/* ]]; then
-            echo "type=minor" >> "$GITHUB_OUTPUT"
-          elif [[ "$BRANCH" == patch/* ]]; then
-            echo "type=patch" >> "$GITHUB_OUTPUT"
-          else
-            echo "type=none" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Compute next version
-        if: steps.bump.outputs.type != 'none'
-        id: version
-        env:
-          BUMP_TYPE: ${{ steps.bump.outputs.type }}
-        run: |
-          LATEST=$(git tag --list 'v*' --sort=-version:refname | head -n 1)
-          LATEST=${LATEST:-v0.0.0}
-          MAJOR=$(echo "$LATEST" | cut -d. -f1 | tr -d 'v')
-          MINOR=$(echo "$LATEST" | cut -d. -f2)
-          PATCH=$(echo "$LATEST" | cut -d. -f3)
-
-          case "$BUMP_TYPE" in
-            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH + 1)) ;;
-          esac
-
-          echo "tag=v${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
-
-      - name: Create and push tag
-        if: steps.bump.outputs.type != 'none'
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          git tag "$TAG"
-          git push origin "$TAG"
+    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-tag.yml@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0

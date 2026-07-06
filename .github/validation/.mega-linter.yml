@@ -1,0 +1,21 @@
+DISABLE_LINTERS:
+  - TERRAFORM_TFLINT
+  - TERRAFORM_TERRASCAN
+  - TERRAFORM_TERRAFORM_FMT # hygiene job runs fmt -check
+  - TERRAFORM_TERRAGRUNT # Terragrunt not in use
+  - REPOSITORY_CHECKOV
+  - REPOSITORY_KICS # IaC scanning owned by Checkov plan-aware scan
+  - REPOSITORY_TRIVY # IaC scanning owned by Checkov plan-aware scan
+  - REPOSITORY_TRIVY_SBOM # no dependency artefacts to SBOM in infra repos
+  - REPOSITORY_SYFT # no dependency artefacts to SBOM in infra repos
+  - REPOSITORY_GRYPE # slowest linter (~1 min); nothing to vuln-scan here
+  - REPOSITORY_SECRETLINT # gitleaks covers secret scanning
+  - REPOSITORY_TRUFFLEHOG # gitleaks covers secret scanning
+  - BASH_SHELLCHECK # preserved from the previous Super-Linter config
+  - COPYPASTE_JSCPD # preserved from the previous Super-Linter config
+  - SPELL_CSPELL
+  - MARKDOWN_MARKDOWN_TABLE_FORMATTER
+  - MARKDOWN_MARKDOWNLINT
+
+SHOW_ELAPSED_TIME: true
+FLAVOR_SUGGESTIONS: false
