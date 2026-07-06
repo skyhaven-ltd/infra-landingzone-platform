@@ -1,4 +1,8 @@
 rules:
+  unpinned-uses:
+    # Temporary while PR #29 tests pipeline-engineering-github-actions@patch/infracost-cost-only.
+    ignore:
+      - pr-validation.yml
   artipacked:
     ignore:
       - tag.yml

@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   Validate:
-    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-terraform.yml@35c3928dd1e653238dc0de99c8658c916c703a1b # v1.0.1
+    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-terraform.yml@patch/infracost-cost-only # TEMP: test cost-only Infracost action
     with:
       environments: '["prd"]'
     secrets: inherit
