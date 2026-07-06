@@ -3,6 +3,7 @@ name: "Terraform"
 on:
   push:
     branches:
+      - main
       - "major/**"
       - "minor/**"
       - "patch/**"
@@ -29,9 +30,17 @@ permissions:
   contents: read
   id-token: write
 
+# Serialise runs so a merge-triggered apply never races another apply or a
+# feature-branch plan for the same state.
+concurrency:
+  group: terraform-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
+  # Pushes to main (merged PRs) apply to prd automatically; other pushes
+  # plan; workflow_dispatch overrides both.
   Terraform:
-    name: "Terraform ${{ inputs.terraform_action || 'plan' }} (${{ inputs.env || 'prd' }})"
+    name: "Terraform ${{ inputs.terraform_action || (github.ref == 'refs/heads/main' && 'apply' || 'plan') }} (${{ inputs.env || 'prd' }})"
     runs-on: ubuntu-latest
     environment: ${{ inputs.env || 'prd' }}
     env:
@@ -39,6 +48,7 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
       ARM_USE_OIDC: "true"
+      TF_ACTION: ${{ inputs.terraform_action || (github.ref == 'refs/heads/main' && 'apply' || 'plan') }}
       TF_ENV: ${{ inputs.env || 'prd' }}
     steps:
       - name: "Checkout"
@@ -61,7 +71,7 @@ jobs:
       - name: "Fetch Secrets From Key Vault"
         uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/keyvault-secrets@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          keyvault_name: kv-platform-${{ inputs.env || 'prd' }}-uks-02
+          keyvault_name: kv-platform-${{ env.TF_ENV }}-uks-02
           secrets: |
             TF_VAR_cloudflare_api_token=cloudflare-api-token
             TF_VAR_cloudflare_account_id=cloudflare-account-id
@@ -72,34 +82,34 @@ jobs:
       - name: "Ensure State Container"
         uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/ensure-tfstate-container@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          storage_account_name: stplatform${{ inputs.env || 'prd' }}uks02
+          storage_account_name: stplatform${{ env.TF_ENV }}uks02
           container_name: ${{ github.event.repository.name }}
           login: "false"
 
       - name: "Terraform Init"
         uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/terraform-backend-init@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          environment: ${{ inputs.env || 'prd' }}
+          environment: ${{ env.TF_ENV }}
           working_directory: infra
           platform_subscription_id: ${{ vars.AZURE_PLATFORM_SUBSCRIPTION_ID }}
           container_name: ${{ github.event.repository.name }}
 
       - name: "Terraform Plan"
-        if: inputs.terraform_action == 'plan' || inputs.terraform_action == ''
+        if: env.TF_ACTION == 'plan'
         run: |
           terraform -chdir=infra plan \
             -var-file="vars/globals.tfvars" \
             -var-file="vars/${TF_ENV}.tfvars"
 
       - name: "Terraform Apply"
-        if: inputs.terraform_action == 'apply'
+        if: env.TF_ACTION == 'apply'
         run: |
           terraform -chdir=infra apply -auto-approve \
             -var-file="vars/globals.tfvars" \
             -var-file="vars/${TF_ENV}.tfvars"
 
       - name: "Terraform Destroy"
-        if: inputs.terraform_action == 'destroy'
+        if: env.TF_ACTION == 'destroy'
         run: |
           terraform -chdir=infra destroy -auto-approve \
             -var-file="vars/globals.tfvars" \
@@ -109,6 +119,6 @@ jobs:
         if: always()
         uses: skyhaven-ltd/pipeline-engineering-github-actions/actions/break-tfstate-lease@6cfa143b42ff464e4101d69c09945db9fac369e5 # v2.0.0
         with:
-          storage_account_name: stplatform${{ inputs.env || 'prd' }}uks02
+          storage_account_name: stplatform${{ env.TF_ENV }}uks02
           container_name: ${{ github.event.repository.name }}
           login: "false"
