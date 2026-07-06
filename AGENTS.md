@@ -10,60 +10,60 @@ Terraform root module for the Sky Haven Azure landing zone platform layer. Provi
 
 ### Local plan
 
-Prerequisites: `az login`, `PORKBUN_API_KEY` and `PORKBUN_SECRET_API_KEY` exported.
+Prerequisites: `az login` and the secret Terraform variables exported for local use. The platform Key Vault is the source of truth for secrets (requires `Key Vault Secrets Officer`/`User` on the vault):
 
 ```bash
-cd infra
+export TF_VAR_cloudflare_api_token=$(az keyvault secret show --vault-name kv-platform-prd-uks-02 --name cloudflare-api-token --query value -o tsv)
+export TF_VAR_cloudflare_account_id=$(az keyvault secret show --vault-name kv-platform-prd-uks-02 --name cloudflare-account-id --query value -o tsv)
+export TF_VAR_porkbun_api_key=$(az keyvault secret show --vault-name kv-platform-prd-uks-02 --name porkbun-api-key --query value -o tsv)
+export TF_VAR_porkbun_secret_api_key=$(az keyvault secret show --vault-name kv-platform-prd-uks-02 --name porkbun-secret-api-key --query value -o tsv)
 
-terraform init \
-  -backend-config="resource_group_name=rg-tfs-platform-prd-uks-01" \
-  -backend-config="storage_account_name=sttfsplatformprduks01" \
+terraform -chdir=infra init \
+  -backend-config="resource_group_name=rg-platform-prd-uks-01" \
+  -backend-config="storage_account_name=stplatformprduks02" \
   -backend-config="container_name=infra-landingzone-platform" \
-  -backend-config="key=terraform.tfstate"
+  -backend-config="key=terraform.tfstate" \
+  -backend-config="subscription_id=<platform-subscription-id>"
 
-terraform plan  -var-file=vars/globals.tfvars -var-file=vars/prd.tfvars
-terraform apply -var-file=vars/globals.tfvars -var-file=vars/prd.tfvars
+terraform -chdir=infra plan  -var-file="vars/globals.tfvars" -var-file="vars/prd.tfvars"
+terraform -chdir=infra apply -var-file="vars/globals.tfvars" -var-file="vars/prd.tfvars"
 ```
 
-### Bootstrap scripts (one-time, not Terraform-managed)
+### Bootstrap script (idempotent, not Terraform-managed)
 
-- `scripts/bootstrap-tfstate-backend.sh` — creates resource groups and storage accounts for Terraform remote state
-- `scripts/bootstrap-deployment-identities.sh` — creates OIDC service principals and role assignments
+- `scripts/bootstrap-platform.sh` - single script creating, per environment, the platform resource group (`rg-platform-{env}-uks-01`) with delete lock, tfstate storage account, platform Key Vault, OIDC service principals with federated credentials and role assignments, GitHub environments, and the `AZURE_*` GitHub environment variables. Safe to re-run.
 
-### Linting
+## Pipeline Behaviour
 
-CI uses Super-Linter. Configs under `.github/workflows/linters/`: Checkov (`.checkov.yaml`), TFLint (`.tflint.hcl`), Prettier (`.prettierrc.json`).
+Pipelines consume shared reusable workflows and composite actions from `skyhaven-ltd/pipeline-engineering-github-actions`, SHA-pinned to a released tag.
+
+- **`lint.yml`** - MegaLinter via the shared `reusable-lint.yml` on every PR to `main`; tuned by `.github/validation/.mega-linter.yml`.
+- **`pr-validation.yml`** - shared `reusable-terraform.yml`: Terraform hygiene, zizmor, then a real `prd` plan with Checkov deep analysis. Azure identity comes from the `AZURE_*` GitHub environment **variables**; plan-time secrets are declared via the `tf_var_secrets` input and fetched from the platform Key Vault after OIDC login. No `secrets:` block.
+- **`terraform.yml`** - deploy workflow (plan/apply/destroy for `prd`). OIDC login with `vars.AZURE_*`, then the shared `keyvault-secrets` composite action exports `TF_VAR_*` values from `kv-platform-{env}-uks-02`. State plumbing is delegated to the shared composite actions.
+- **`tag.yml`** - auto-tag on PR merge via shared `reusable-tag.yml` (`major/**`/`minor/**`/`patch/**` branch prefix drives the semver bump).
 
 ## Architecture
 
 ### Naming convention
 
-`{type}-{workload}-{env}-{region}-{index}` via `local.resource_suffix` (e.g. `vnet-platform-prd-uks-01`). Built from `var.workload`, `var.environment`, `var.location_short`, and `var.instance`. Flat variant `local.resource_suffix_flat` used for resources that disallow hyphens (e.g. storage accounts).
+`{type}-{workload}-{env}-{region}-{index}` via `local.resource_suffix` (e.g. `vnet-platform-prd-uks-01`). Flat variant `local.resource_suffix_flat` for resources that disallow hyphens (e.g. storage accounts).
 
 ### Providers
 
-- `hashicorp/azurerm ~> 4.68.0` — all Azure resources
-- `kyswtn/porkbun ~> 0.1.3` — delegates NS records at Porkbun registrar to Azure DNS nameservers
+- `hashicorp/azurerm ~> 4.68.0` - all Azure resources
+- `cloudflare/cloudflare ~> 5.0` - Cloudflare public DNS zones and zone settings
+- `kyswtn/porkbun ~> 0.1.3` - delegates nameservers at Porkbun registrar to Cloudflare nameservers
 
-Porkbun provider authenticates via `PORKBUN_API_KEY` and `PORKBUN_SECRET_API_KEY` env vars. In CI these come from the `prd` GitHub environment secrets.
+Sensitive provider variables (`cloudflare_api_token`, `porkbun_api_key`, `porkbun_secret_api_key`, ...) are fetched from the platform Key Vault in CI and exported as `TF_VAR_*`.
 
 ### State backend
 
-Azure Storage with azurerm backend. Resource group `rg-tfs-platform-prd-uks-01`, storage account `sttfsplatformprduks01`. Container name matches repository name (`infra-landingzone-platform`). Single state file covers all resources.
+Azure Storage with azurerm backend. Resource group `rg-platform-prd-uks-01`, storage account `stplatformprduks02`. Container name matches repository name (`infra-landingzone-platform`). Single state file covers all resources. The same resource group also holds the platform Key Vault `kv-platform-prd-uks-02` (`dev` equivalents exist for the other repos).
 
 ### Tfvars layout
 
-Flat structure under `infra/vars/`:
-
-- `globals.tfvars` — empty (reserved for cross-env shared values)
-- `prd.tfvars` — production values (subscriptions, networking, DNS, budgets)
-
-### CI/CD (GitHub Actions)
-
-- `.github/workflows/linting.yml` — PR pipeline targeting `main`: Super-Linter only.
-- `.github/workflows/terraform.yml` — plan/apply/destroy for `prd`. Auto-triggers on push to `major/**`, `minor/**`, `patch/**` branches (defaults to plan); manual dispatch allows selecting action. Uses `prd` GitHub environment for OIDC secrets.
-- `.github/actions/ensure-tfstate-container/` — composite action: creates tfstate storage container if missing before init.
-- `.github/actions/break-tfstate-lease/` — composite action: breaks blob lease on failed runs (always runs).
+- `infra/vars/globals.tfvars` - empty (reserved for cross-env shared values)
+- `infra/vars/prd.tfvars` - production values (subscriptions, networking, DNS, budgets)
 
 ### Resource domains
 
@@ -71,9 +71,9 @@ Flat structure under `infra/vars/`:
 | ---------------------- | --------------------------------------------------------------------------------------- |
 | `management-groups.tf` | Three MGs (Platform, Personal, Customer) under tenant root + subscription associations  |
 | `networking.tf`        | Hub VNet, subnets (data-driven from `var.subnets`), NSGs, route tables, network watcher |
-| `dns.tf`               | Azure public DNS zones + Porkbun NS delegation                                          |
-| `budgets.tf`           | £2/mo consumption budget per subscription with email alerts                             |
+| `dns.tf`               | Cloudflare public DNS zones + Porkbun NS delegation                                     |
+| `budgets.tf`           | GBP 2/mo consumption budget per subscription with email alerts                          |
 
 ### Deployment identity model
 
-Platform SP (`spn-platform`) has Owner on tenant root management group — required for MG and cross-subscription operations. Personal and customer SPs have Owner scoped to their respective subscriptions.
+Platform SP (`spn-platform`) has Owner on tenant root management group - required for MG and cross-subscription operations. Personal and customer SPs have Owner scoped to their respective subscriptions. All SPs hold `Storage Account Contributor` on the tfstate storage accounts and `Key Vault Secrets User` on the platform Key Vaults.
