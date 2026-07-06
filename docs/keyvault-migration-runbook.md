@@ -74,6 +74,16 @@ done
 
 All copies must show `success` before continuing. State blobs are small; this is near-instant.
 
+> **Executed 2026-07-06, with one addition:** the app repos had been renamed
+> `solution-*` → `app-*` on GitHub, but their state containers kept the old
+> `solution-*` names — workflows derive the container from the current repo
+> name, so the next run would have started from empty state. During the copy
+> the containers were renamed to match (`solution-X` → `app-X`) in the new
+> accounts only; the old accounts remain untouched as rollback.
+> Also note: when scripting `az` in Git Bash, strip carriage returns from
+> `-o tsv` output (`| tr -d '\r'`) or container names arrive with a trailing
+> `\r` and fail with `InvalidUri`.
+
 ## 5. Populate the Key Vault secrets
 
 Values come from your password manager / the original providers (GitHub secrets are write-only). For each vault (`kv-platform-prd-uks-02`, `kv-platform-dev-uks-02`):
