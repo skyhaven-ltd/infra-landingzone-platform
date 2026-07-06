@@ -106,6 +106,18 @@ variable "cloudflare_account_id" {
   type        = string
 }
 
+variable "porkbun_api_key" {
+  description = "Porkbun API key used to delegate nameservers from Porkbun to Cloudflare."
+  type        = string
+  sensitive   = true
+}
+
+variable "porkbun_secret_api_key" {
+  description = "Porkbun secret API key used to delegate nameservers from Porkbun to Cloudflare."
+  type        = string
+  sensitive   = true
+}
+
 variable "budget_contact_emails" {
   description = "Email addresses to notify for budget alerts."
   type        = list(string)

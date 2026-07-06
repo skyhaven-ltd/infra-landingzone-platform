@@ -1,0 +1,21 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  Validate:
+    uses: skyhaven-ltd/pipeline-engineering-github-actions/.github/workflows/reusable-terraform.yml@35c3928dd1e653238dc0de99c8658c916c703a1b # v1.0.1
+    with:
+      environments: '["prd"]'
+    secrets: inherit

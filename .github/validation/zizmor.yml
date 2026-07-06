@@ -1,0 +1,7 @@
+rules:
+  artipacked:
+    ignore:
+      - tag.yml
+  secrets-inherit:
+    ignore:
+      - pr-validation.yml
