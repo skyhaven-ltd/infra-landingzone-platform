@@ -601,7 +601,12 @@ Expected Key Vault secrets (populate with `az keyvault secret set
     cvengine-brevo-api-key              (both vaults)
     github-platform-gh-app-id           (prd vault)
     github-platform-gh-app-private-key  (prd vault)
-    homelab-proxmox-api-token           (prd vault)
-    homelab-ansible-ssh-private-key     (prd vault)
-    homelab-argocd-kubeconfig           (prd vault)
+
+infra-homelab-config deliberately keeps its secrets OUT of these vaults. The
+Proxmox API token, Ansible SSH key and Argo CD kubeconfig grant nothing in
+Azure, and reading them from Key Vault would require installing the Azure CLI
+on the homelab runner and granting it Key Vault data-plane access it otherwise
+has no reason to hold. They are `homelab` GitHub environment secrets instead.
+Azure is used by that repo for Terraform state only, via the azurerm backend's
+native OIDC support.
 EOF
