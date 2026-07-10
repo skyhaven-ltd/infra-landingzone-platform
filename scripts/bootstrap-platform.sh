@@ -64,11 +64,23 @@ declare -A ROLE_ASSIGNMENT_SCOPES=(
 
 # Map each scope to the repos and environments that need federated credentials.
 # Format: "repo:environment" pairs. Each pair gets its own federated credential.
+#
+# infra-homelab-config deploys no Azure resources — it reaches Azure only for
+# Terraform state and Key Vault reads, both of which spn-personal already holds
+# on the platform storage account and vault (Part 2).
 declare -A GITHUB_REPOS=(
 	["platform"]="infra-landingzone-platform:prd"
-	["personal"]="app-certwatch-web:dev app-certwatch-web:prd app-cvengine-portfolio:dev app-cvengine-portfolio:prd app-powertoggle-vm:dev app-powertoggle-vm:prd infra-engineering-template:dev infra-engineering-template:prd"
+	["personal"]="app-certwatch-web:dev app-certwatch-web:prd app-cvengine-portfolio:dev app-cvengine-portfolio:prd app-powertoggle-vm:dev app-powertoggle-vm:prd infra-engineering-template:dev infra-engineering-template:prd infra-homelab-config:homelab"
 	["customer"]="app-braveart-gallery:dev app-braveart-gallery:prd"
 )
+
+# "repo:environment" pairs whose GitHub environment only releases its secrets to
+# workflows running on `main`. The homelab environment hands a job credentials
+# that reach inside the home network, so it must never be claimable from a
+# feature branch. Deliberately a custom branch policy rather than the built-in
+# `protected_branches`, which keys off *classic* branch protection and ignores
+# the repository rulesets this org uses — it would silently permit any branch.
+PROTECTED_ENVIRONMENTS=("infra-homelab-config:homelab")
 
 SCOPES=("platform" "personal" "customer")
 
@@ -163,6 +175,49 @@ ensure_cli_role_assignment() {
 			--role "$role_name" \
 			--scope "$scope" \
 			--output none
+	fi
+}
+
+is_protected_environment() {
+	local entry="$1"
+	local candidate
+
+	for candidate in "${PROTECTED_ENVIRONMENTS[@]}"; do
+		[[ "$candidate" == "$entry" ]] && return 0
+	done
+
+	return 1
+}
+
+# Create the GitHub environment, restricting it to `main` when the pair is
+# listed in PROTECTED_ENVIRONMENTS. The PUT is create-or-enforce; the branch
+# policy POST is not idempotent, so it is guarded by a lookup.
+ensure_github_environment() {
+	local repo="$1"
+	local env="$2"
+	local existing_policy
+
+	if ! is_protected_environment "${repo}:${env}"; then
+		gh api --method PUT "repos/${GITHUB_OWNER}/${repo}/environments/${env}" --silent 2>/dev/null || true
+		return 0
+	fi
+
+	echo "Restricting ${repo} environment ${env} to the main branch..."
+
+	gh api --method PUT "repos/${GITHUB_OWNER}/${repo}/environments/${env}" --input - --silent <<-'JSON'
+		{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}
+	JSON
+
+	existing_policy=$(gh api \
+		"repos/${GITHUB_OWNER}/${repo}/environments/${env}/deployment-branch-policies" \
+		--jq '.branch_policies[] | select(.name == "main") | .id' 2>/dev/null || true)
+
+	if [[ -n "$existing_policy" ]]; then
+		echo "Branch policy for main already exists, skipping."
+	else
+		gh api --method POST \
+			"repos/${GITHUB_OWNER}/${repo}/environments/${env}/deployment-branch-policies" \
+			-f name=main --silent
 	fi
 }
 
@@ -446,7 +501,7 @@ for SCOPE in "${SCOPES[@]}"; do
 			fi
 
 			# Ensure GitHub environment exists (idempotent — PUT creates or no-ops)
-			gh api --method PUT "repos/${GITHUB_OWNER}/${REPO}/environments/${ENV}" --silent 2>/dev/null || true
+			ensure_github_environment "$REPO" "$ENV"
 
 			# GitHub environment *variables* — the OIDC identifiers are GUIDs, not
 			# secrets, and variables stay viewable in the UI. gh variable set is
@@ -546,4 +601,12 @@ Expected Key Vault secrets (populate with `az keyvault secret set
     cvengine-brevo-api-key              (both vaults)
     github-platform-gh-app-id           (prd vault)
     github-platform-gh-app-private-key  (prd vault)
+
+infra-homelab-config deliberately keeps its secrets OUT of these vaults. The
+Proxmox API token, Ansible SSH key and Argo CD kubeconfig grant nothing in
+Azure, and reading them from Key Vault would require installing the Azure CLI
+on the homelab runner and granting it Key Vault data-plane access it otherwise
+has no reason to hold. They are `homelab` GitHub environment secrets instead.
+Azure is used by that repo for Terraform state only, via the azurerm backend's
+native OIDC support.
 EOF
