@@ -584,29 +584,24 @@ cat <<'EOF'
 Expected Key Vault secrets (populate with `az keyvault secret set
 --vault-name <vault> --name <name> --value '<value>'`):
 
-  Shared (both vaults):
-    cloudflare-api-token
-    cloudflare-account-id
-    infracost-api-key
-
-  Shared (prd vault only is sufficient):
-    porkbun-api-key
-    porkbun-secret-api-key
+  Platform (both vaults):
+    platform-cloudflare-api-token
+    platform-cloudflare-account-id
+    platform-infracost-api-key
 
   Repo-specific:
-    braveart-yoco-secret-key            (both vaults)
-    certwatch-entra-client-secret       (both vaults)
-    certwatch-brevo-api-key             (both vaults)
-    cvengine-blog-notify-secret         (both vaults)
-    cvengine-brevo-api-key              (both vaults)
-    github-platform-gh-app-id           (prd vault)
-    github-platform-gh-app-private-key  (prd vault)
+    platform-porkbun-api-key                 (prd vault)
+    platform-porkbun-secret-api-key          (prd vault)
+    app-braveart-yoco-secret-key             (both vaults)
+    app-certwatch-entra-client-secret        (both vaults)
+    app-certwatch-brevo-api-key              (both vaults)
+    app-cvengine-blog-notify-token           (both vaults)
+    app-cvengine-brevo-api-key               (both vaults)
+    platform-github-app-id                   (prd vault)
+    platform-github-app-installation-id      (prd vault)
+    platform-github-app-private-key          (prd vault)
 
-infra-homelab-config deliberately keeps its secrets OUT of these vaults. The
-Proxmox API token, Ansible SSH key and Argo CD kubeconfig grant nothing in
-Azure, and reading them from Key Vault would require installing the Azure CLI
-on the homelab runner and granting it Key Vault data-plane access it otherwise
-has no reason to hold. They are `homelab` GitHub environment secrets instead.
-Azure is used by that repo for Terraform state only, via the azurerm backend's
-native OIDC support.
+infra-homelab-config stores its environment-owned credentials under the
+`homelab-` prefix in the production vault. Its workflows are the authoritative
+list because those credentials evolve independently of the platform bootstrap.
 EOF

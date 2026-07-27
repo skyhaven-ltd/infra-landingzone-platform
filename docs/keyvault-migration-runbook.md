@@ -92,24 +92,25 @@ Values come from your password manager / the original providers (GitHub secrets 
 az keyvault secret set --vault-name <vault> --name <name> --value '<value>'
 ```
 
-| Secret name                          | Vaults    |
-| ------------------------------------ | --------- |
-| `cloudflare-api-token`               | prd + dev |
-| `cloudflare-account-id`              | prd + dev |
-| `infracost-api-key`                  | prd + dev |
-| `porkbun-api-key`                    | prd       |
-| `porkbun-secret-api-key`             | prd       |
-| `braveart-yoco-secret-key`           | prd + dev |
-| `certwatch-entra-client-secret`      | prd + dev |
-| `certwatch-brevo-api-key`            | prd + dev |
-| `cvengine-blog-notify-secret`        | prd + dev |
-| `cvengine-brevo-api-key`             | prd + dev |
-| `github-platform-gh-app-id`          | prd       |
-| `github-platform-gh-app-private-key` | prd       |
+| Secret name                              | Vaults    |
+| ---------------------------------------- | --------- |
+| `platform-cloudflare-api-token`          | prd + dev |
+| `platform-cloudflare-account-id`         | prd + dev |
+| `platform-infracost-api-key`             | prd + dev |
+| `platform-porkbun-api-key`               | prd       |
+| `platform-porkbun-secret-api-key`        | prd       |
+| `app-braveart-yoco-secret-key`           | prd + dev |
+| `app-certwatch-entra-client-secret`      | prd + dev |
+| `app-certwatch-brevo-api-key`            | prd + dev |
+| `app-cvengine-blog-notify-token`         | prd + dev |
+| `app-cvengine-brevo-api-key`             | prd + dev |
+| `platform-github-app-id`                 | prd       |
+| `platform-github-app-installation-id`    | prd       |
+| `platform-github-app-private-key`        | prd       |
 
-For the multiline GH App PEM: `az keyvault secret set --vault-name kv-platform-prd-uks-02 --name github-platform-gh-app-private-key --file <key.pem>`.
+For the multiline GH App PEM: `az keyvault secret set --vault-name kv-platform-prd-uks-02 --name platform-github-app-private-key --file <key.pem>`.
 
-Verify visibility (the original pain point): `az keyvault secret show --vault-name kv-platform-prd-uks-02 --name cloudflare-api-token --query value -o tsv`.
+Verify visibility (the original pain point): `az keyvault secret show --vault-name kv-platform-prd-uks-02 --name platform-cloudflare-api-token --query value -o tsv`.
 
 ## 6. Merge repo PRs and verify
 
