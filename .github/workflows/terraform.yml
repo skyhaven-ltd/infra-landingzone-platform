@@ -69,10 +69,10 @@ jobs:
         with:
           keyvault_name: kv-platform-${{ env.TF_ENV }}-uks-02
           secrets: |
-            TF_VAR_cloudflare_api_token=cloudflare-api-token
-            TF_VAR_cloudflare_account_id=cloudflare-account-id
-            TF_VAR_porkbun_api_key=porkbun-api-key
-            TF_VAR_porkbun_secret_api_key=porkbun-secret-api-key
+            TF_VAR_cloudflare_api_token=platform-cloudflare-api-token
+            TF_VAR_cloudflare_account_id=platform-cloudflare-account-id
+            TF_VAR_porkbun_api_key=platform-porkbun-api-key
+            TF_VAR_porkbun_secret_api_key=platform-porkbun-secret-api-key
           login: "false"
 
       - name: "Ensure State Container"
