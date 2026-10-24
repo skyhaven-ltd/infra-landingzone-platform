@@ -80,7 +80,7 @@ declare -A GITHUB_REPOS=(
 # feature branch. Deliberately a custom branch policy rather than the built-in
 # `protected_branches`, which keys off *classic* branch protection and ignores
 # the repository rulesets this org uses — it would silently permit any branch.
-PROTECTED_ENVIRONMENTS=("infra-homelab-config:homelab" "app-goodnews-web:prd")
+PROTECTED_ENVIRONMENTS=("infra-homelab-config:homelab")
 
 SCOPES=("platform" "personal" "customer")
 
